@@ -16,12 +16,8 @@ defmodule Wx do
     IO.inspect(output)
   end
 
-  defp c_to_int(str) do
-    case str do
-      "M" <> rest -> -String.to_integer(rest)
-      _ -> String.to_integer(str)
-    end
-  end
+  defp c_to_int("M"<>str), do: -c_to_int(str)
+  defp c_to_int(str), do: String.to_integer(str)
 
   defp relative_humidity(temp, dewpoint) do
     100 *
