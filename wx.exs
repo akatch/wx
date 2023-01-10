@@ -38,6 +38,14 @@ defmodule Wx do
     end
   end
 
+  def convert_temperature(temperature, unit) do
+    case unit do
+      "f" -> round(temperature * 9 / 5 + 32)
+      "k" -> temperature + 270
+      _ -> temperature
+    end
+  end
+
   def parse(metar_string) do
     %{
       "dewpoint" => dp,
@@ -53,7 +61,7 @@ defmodule Wx do
 
     %{
       temperature_c: c_to_int(t),
-      dewpoint: c_to_int(dp),
+      dewpoint_c: c_to_int(dp),
       relative_humidity: round(relative_humidity(c_to_int(t), c_to_int(dp))),
       wind_bearing: String.to_integer(wd),
       wind_speed_kt: String.to_integer(ws)
@@ -79,7 +87,7 @@ case System.argv() do
         result = Wx.parse(@metar)
 
         assert %{
-                 dewpoint: -4,
+                 dewpoint_c: -4,
                  relative_humidity: 86,
                  temperature_c: -2,
                  wind_speed_kt: 6
@@ -89,6 +97,13 @@ case System.argv() do
       test "Wind speed conversion" do
         result = Wx.parse(@metar)
         assert 11 = Wx.convert_wind_speed(result.wind_speed_kt, "kph")
+        assert 7 = Wx.convert_wind_speed(result.wind_speed_kt, "mph")
+      end
+
+      test "Temperature conversion" do
+        result = Wx.parse(@metar)
+        assert 28 = Wx.convert_temperature(result.temperature_c, "f")
+        assert 268 = Wx.convert_temperature(result.temperature_c, "k")
       end
     end
 
