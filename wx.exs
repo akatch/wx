@@ -13,6 +13,13 @@ defmodule Wx do
     IO.inspect(output)
   end
 
+  defp c_to_int(str) do
+    case str do
+      "M" <> rest -> -String.to_integer(rest)
+      _ -> String.to_integer(str)
+    end
+  end
+
   def parse(metar_string) do
     %{"temperature" => t, "dewpoint" => dp} =
       Regex.named_captures(
@@ -20,19 +27,7 @@ defmodule Wx do
         metar_string
       )
 
-    temperature =
-      case t do
-        "M" <> rest -> -String.to_integer(rest)
-        _ -> String.to_integer(t)
-      end
-
-    dewpoint =
-      case dp do
-        "M" <> rest -> -String.to_integer(rest)
-        _ -> String.to_integer(dp)
-      end
-
-    %{temperature: temperature, dewpoint: dewpoint}
+    %{temperature: c_to_int(t), dewpoint: c_to_int(dp)}
   end
 
   def metar() do
@@ -50,9 +45,9 @@ case System.argv() do
 
       @metar "2023/01/09 15:55\nKRYV 091555Z AUTO 22006KT 7SM CLR M02/M04 A3009 RMK AO2 T10211045\n"
 
-      test "temperature in celsius" do
+      test "Temperature and dewpoint in Celsius" do
         result = Wx.parse(@metar)
-        assert %{temperature: -2} = result
+        assert %{temperature: -2, dewpoint: -4} = result
       end
     end
 
