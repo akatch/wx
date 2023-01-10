@@ -9,14 +9,22 @@ Mix.install([
 
 defmodule Wx do
   def main(_args) do
-    metar = Req.get!("https://tgftp.nws.noaa.gov/data/observations/metar/stations/KRYV.TXT").body
-    parse(metar)
+    parse(metar())
   end
 
-  def parse(metar) do
-    IO.inspect(
-      Regex.named_captures(~r/(?<temperature>(M)?(\d{2}))\/(?<dewpoint>(M)?(\d{2}))/, metar)
-    )
+  def parse(metar_string) do
+    captures =
+      Regex.named_captures(
+        ~r/(?<temperature>(M)?(\d{2}))\/(?<dewpoint>(M)?(\d{2}))/,
+        metar_string
+      )
+
+    String.replace_prefix(captures["temperature"], "M", "-")
+    captures
+  end
+
+  def metar() do
+    Req.get!("https://tgftp.nws.noaa.gov/data/observations/metar/stations/KRYV.TXT").body
   end
 end
 
@@ -31,7 +39,7 @@ case System.argv() do
       @metar "2023/01/09 15:55\nKRYV 091555Z AUTO 22006KT 7SM CLR M02/M04 A3009 RMK AO2 T10211045\n"
 
       test "temperature in celsius" do
-        temp_c = -999
+        temp_c = Wx.parse(@metar)["temperature"]
         assert temp_c == -2
       end
     end
