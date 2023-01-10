@@ -8,6 +8,9 @@ Mix.install([
 ])
 
 defmodule Wx do
+  # The URL for METAR data
+  @data_url "https://tgftp.nws.noaa.gov/data/observations/metar/stations/KMDW.TXT"
+
   def main(_args) do
     output = parse(metar())
     IO.inspect(output)
@@ -20,18 +23,36 @@ defmodule Wx do
     end
   end
 
+  defp relative_humidity(temp, dewpoint) do
+    100 *
+      (:math.exp(17.625 * dewpoint / (243.04 + dewpoint)) /
+         :math.exp(17.625 * temp / (243.04 + temp)))
+  end
+
   def parse(metar_string) do
-    %{"temperature" => t, "dewpoint" => dp} =
+    %{
+      "dewpoint" => dp,
+      "gusting" => _g,
+      "temperature" => t,
+      "wind_speed" => ws,
+      "wind_direction" => wd
+    } =
       Regex.named_captures(
-        ~r/\s(?<temperature>M?(\d{2}))\/(?<dewpoint>M?(\d{2}))\s/,
+        ~r/(?<gusting>\d{2}G)?(?<wind_direction>\d{3})(?<wind_speed>\d{2})KT\s(?:.*)\s(?<temperature>(M)?(\d{2}))\/(?<dewpoint>(M)?(\d{2}))\s/,
         metar_string
       )
 
-    %{temperature: c_to_int(t), dewpoint: c_to_int(dp)}
+    %{
+      temperature: c_to_int(t),
+      dewpoint: c_to_int(dp),
+      relative_humidity: round(relative_humidity(c_to_int(t), c_to_int(dp))),
+      wind_speed: String.to_integer(ws),
+      wind_direction: wd
+    }
   end
 
   def metar() do
-    Req.get!("https://tgftp.nws.noaa.gov/data/observations/metar/stations/KMDW.TXT").body
+    Req.get!(@data_url).body
   end
 end
 
@@ -47,9 +68,19 @@ case System.argv() do
 
       test "Temperature and dewpoint in Celsius" do
         result = Wx.parse(@metar)
-        assert %{temperature: -2, dewpoint: -4} = result
+
+        assert %{
+                 dewpoint: -4,
+                 relative_humidity: 86,
+                 temperature: -2,
+                 wind_speed: 6
+               } = result
       end
     end
+
+  # Display the raw METAR string
+  ["metar"] ->
+    IO.inspect(Wx.metar())
 
   # For any other argument (or none), execute Wx.main
   _ ->
