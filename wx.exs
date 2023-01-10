@@ -29,6 +29,15 @@ defmodule Wx do
          :math.exp(17.625 * temp / (243.04 + temp)))
   end
 
+  def convert_wind_speed(speed, unit) do
+    case unit do
+      # TODO case insensitive unit
+      "kph" -> round(speed * 1.852)
+      "mph" -> round(speed * 1.151)
+      _ -> speed
+    end
+  end
+
   def parse(metar_string) do
     %{
       "dewpoint" => dp,
@@ -43,11 +52,11 @@ defmodule Wx do
       )
 
     %{
-      temperature: c_to_int(t),
+      temperature_c: c_to_int(t),
       dewpoint: c_to_int(dp),
       relative_humidity: round(relative_humidity(c_to_int(t), c_to_int(dp))),
-      wind_speed: String.to_integer(ws),
-      wind_direction: wd
+      wind_bearing: String.to_integer(wd),
+      wind_speed_kt: String.to_integer(ws)
     }
   end
 
@@ -72,9 +81,14 @@ case System.argv() do
         assert %{
                  dewpoint: -4,
                  relative_humidity: 86,
-                 temperature: -2,
-                 wind_speed: 6
+                 temperature_c: -2,
+                 wind_speed_kt: 6
                } = result
+      end
+
+      test "Wind speed conversion" do
+        result = Wx.parse(@metar)
+        assert 11 = Wx.convert_wind_speed(result.wind_speed_kt, "kph")
       end
     end
 
