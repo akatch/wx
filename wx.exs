@@ -16,7 +16,7 @@ defmodule Wx do
     IO.inspect(output)
   end
 
-  defp c_to_int("M"<>str), do: -c_to_int(str)
+  defp c_to_int("M" <> str), do: -c_to_int(str)
   defp c_to_int(str), do: String.to_integer(str)
 
   defp relative_humidity(temp, dewpoint) do
@@ -80,8 +80,21 @@ defmodule Wx do
     end
   end
 
+  defp translate_condition(c) do
+    case c do
+      c when c in ["CLR", "SKC"] -> "clear"
+      "FEW" -> "partly cloudy"
+      "SCT" -> "cloudy"
+      "BKN" -> "mostly cloudy"
+      "OVC" -> "overcast"
+      "VV" -> "vertical visibility"
+      _ -> false
+    end
+  end
+
   def parse(metar_string) do
     %{
+      "condition" => c,
       "dewpoint" => dp,
       "gusting" => _g,
       "temperature" => t,
@@ -89,14 +102,15 @@ defmodule Wx do
       "wind_direction" => wd
     } =
       Regex.named_captures(
-        ~r/(?<gusting>\d{2}G)?(?<wind_direction>\d{3})(?<wind_speed>\d{2})KT\s(?:.*)\s(?<temperature>(M)?(\d{2}))\/(?<dewpoint>(M)?(\d{2}))\s/,
+        ~r/(?<gusting>\d{2}G)?(?<wind_direction>\d{3})(?<wind_speed>\d{2})KT\s(?:.*)(?<condition>(CLR|SKC|FEW|SCT|BKN|OVC|VV))(?:[0-9]+)?\s(?<temperature>(M)?(\d{2}))\/(?<dewpoint>(M)?(\d{2}))\s/,
         metar_string
       )
 
     %{
-      temperature_c: c_to_int(t),
+      condition: translate_condition(c),
       dewpoint_c: c_to_int(dp),
       relative_humidity: round(relative_humidity(c_to_int(t), c_to_int(dp))),
+      temperature_c: c_to_int(t),
       wind_bearing: String.to_integer(wd),
       wind_speed_kt: String.to_integer(ws)
     }
@@ -122,6 +136,7 @@ case System.argv() do
         result = Wx.parse(@metar)
 
         assert %{
+                 condition: "clear",
                  dewpoint_c: -4,
                  relative_humidity: 86,
                  temperature_c: -2,
@@ -158,12 +173,17 @@ case System.argv() do
 
         assert 27 = round(Wx.calculate_heat_index(result.temperature_c, result.relative_humidity))
       end
+
+      test "Check conditions" do
+        result = Wx.parse(@metar_dfw)
+        assert "mostly cloudy" = result.condition
+      end
     end
 
   # Display a summary of current conditions
   ["summary"] ->
     result = Wx.parse(Wx.metar())
-    IO.puts(Wx.convert_temperature(result.temperature_c, "f"))
+    IO.puts("#{Wx.convert_temperature(result.temperature_c, "f")}°F #{result.condition}")
 
   # Display the raw METAR string
   ["metar"] ->
