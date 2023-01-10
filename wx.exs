@@ -46,6 +46,20 @@ defmodule Wx do
     end
   end
 
+  def calculate_wind_chill(temperature_c, wind_speed_kph) do
+    cond do
+      temperature_c > 10 ->
+        false
+
+      wind_speed_kph < 4.8 ->
+        false
+
+      true ->
+        13.12 + 0.6215 * temperature_c - 11.37 * :math.pow(wind_speed_kph, 0.16) +
+          0.3965 * temperature_c * :math.pow(wind_speed_kph, 0.16)
+    end
+  end
+
   def parse(metar_string) do
     %{
       "dewpoint" => dp,
@@ -105,7 +119,24 @@ case System.argv() do
         assert 28 = Wx.convert_temperature(result.temperature_c, "f")
         assert 268 = Wx.convert_temperature(result.temperature_c, "k")
       end
+
+      test "Calculate wind chill" do
+        result = Wx.parse(@metar)
+
+        assert -6 =
+                 round(
+                   Wx.calculate_wind_chill(
+                     result.temperature_c,
+                     Wx.convert_wind_speed(result.wind_speed_kt, "kph")
+                   )
+                 )
+      end
     end
+
+  # Display a summary of current conditions
+  ["summary"] ->
+    result = Wx.parse(Wx.metar())
+    IO.puts(Wx.convert_temperature(result.temperature_c, "f"))
 
   # Display the raw METAR string
   ["metar"] ->
