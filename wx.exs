@@ -21,16 +21,22 @@ defmodule Wx do
       )
 
     case t do
-      "M" <> rest -> -String.to_integer(rest)
-      _ -> String.to_integer(t)
+      "M" <> rest ->
+        temperature = -String.to_integer(rest)
+
+      _ ->
+        temperature = String.to_integer(t)
     end
 
     case dp do
-      "M" <> rest -> -String.to_integer(rest)
-      _ -> String.to_integer(dp)
+      "M" <> rest ->
+        dewpoint = -String.to_integer(rest)
+
+      _ ->
+        dewpoint = String.to_integer(dp)
     end
 
-    %{temperature: t, dewpoint: dp}
+    %{temperature: temperature, dewpoint: dewpoint}
   end
 
   def metar() do
@@ -49,8 +55,8 @@ case System.argv() do
       @metar "2023/01/09 15:55\nKRYV 091555Z AUTO 22006KT 7SM CLR M02/M04 A3009 RMK AO2 T10211045\n"
 
       test "temperature in celsius" do
-        _result = Wx.parse(@metar)
-        assert _result = %{"temperature" => -2}
+        result = Wx.parse(@metar)
+        assert %{"temperature" => -2} = result
       end
     end
 
