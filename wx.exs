@@ -60,6 +60,30 @@ defmodule Wx do
     end
   end
 
+  def calculate_heat_index(temperature_c, relative_humidity) do
+    cond do
+      temperature_c < 27 ->
+        false
+
+      true ->
+        c1 = -8.78469475556
+        c2 = 1.61139411
+        c3 = 2.33854883889
+        c4 = -0.14611605
+        c5 = -0.012308094
+        c6 = -0.0164248277778
+        c7 = 0.002211732
+        c8 = 0.00072546
+        c9 = -0.000003582
+
+        c1 + c2 * temperature_c + c3 * relative_humidity + c4 * temperature_c * relative_humidity +
+          c5 * :math.pow(temperature_c, 2) + c6 * :math.pow(relative_humidity, 2) +
+          c7 * :math.pow(temperature_c, 2) * relative_humidity +
+          c8 * temperature_c * :math.pow(relative_humidity, 2) +
+          c9 * (:math.pow(temperature_c, 2) * :math.pow(relative_humidity, 2))
+    end
+  end
+
   def parse(metar_string) do
     %{
       "dewpoint" => dp,
@@ -96,6 +120,7 @@ case System.argv() do
       use ExUnit.Case, async: true
 
       @metar "2023/01/09 15:55\nKRYV 091555Z AUTO 22006KT 7SM CLR M02/M04 A3009 RMK AO2 T10211045\n"
+      @metar_dfw "2023/01/10 20:53\nKDFW 102053Z 21018KT 10SM BKN250 28/07 A2983 RMK AO2 PK WND 22026/2011 SLP095 T02830067 56036\n"
 
       test "Temperature and dewpoint in Celsius" do
         result = Wx.parse(@metar)
@@ -130,6 +155,12 @@ case System.argv() do
                      Wx.convert_wind_speed(result.wind_speed_kt, "kph")
                    )
                  )
+      end
+
+      test "Calculate heat index" do
+        result = Wx.parse(@metar_dfw)
+
+        assert 27 = round(Wx.calculate_heat_index(result.temperature_c, result.relative_humidity))
       end
     end
 
