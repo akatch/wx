@@ -170,7 +170,6 @@ defmodule Wx do
       "condition" => c,
       "dewpoint" => dp,
       "gusting" => _g,
-      "phenomena" => _p,
       "quality" => qual,
       "description" => desc,
       "precipitation" => prec,
@@ -181,7 +180,7 @@ defmodule Wx do
       "wind_direction" => wd
     } =
       Regex.named_captures(
-        ~r/(?<gusting>\d{2}G)?(?<wind_direction>\d{3})(?<wind_speed>\d{2})KT\s(?:.*)(?<condition>(CLR|SKC|FEW|SCT|BKN|OVC|VV))(?:[0-9]+)?\s(?<temperature>(M)?(\d{2}))\/(?<dewpoint>(M)?(\d{2}))\s(?:.*)RMK(?<phenomena>(?<quality>\+|-|VC)?(?<description>MI|BL|BC|SH|PR|DR|TS|FZ)?(?<precipitation>DZ|IC|UP|RA|PL|SN|GR|SG|GS)?(?<obscurity>BR|SA|FU|HZ|VA|PY|DU|FG)?(?<other>SQ|FC|SS|DS|PO)?)/,
+        ~r/(?<gusting>\d{2}G)?(?<wind_direction>\d{3})(?<wind_speed>\d{2})KT\s(?:\d+SM)(?:\s(?<quality>\+|-|VC)?(?<description>MI|BL|BC|SH|PR|DR|TS|FZ)?(?<precipitation>DZ|IC|UP|RA|PL|SN|GR|SG|GS)?(?<obscurity>BR|SA|FU|HZ|VA|PY|DU|FG)?(?<other>SQ|FC|SS|DS|PO)?)?\s(?<condition>(CLR|SKC|FEW|SCT|BKN|OVC|VV))(?:[0-9]+)?\s(?<temperature>M?(\d{2}))\/(?<dewpoint>M?(\d{2}))/,
         metar_string
       )
 
