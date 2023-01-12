@@ -92,23 +92,104 @@ defmodule Wx do
     end
   end
 
+  defp translate_quality(quality) do
+    case quality do
+      "+" -> "heavy"
+      "-" -> "light"
+      "VC" -> "vicinity"
+      _ -> nil
+    end
+  end
+
+  defp translate_other(other) do
+    case other do
+      "SQ" -> "squall"
+      "SS" -> "sandstorm"
+      "FC" -> "tornado"
+      "DS" -> "dust storm"
+      "PO" -> "sand whirls"
+      _ -> nil
+    end
+  end
+
+  defp translate_description(description) do
+    case description do
+      "MI" -> "shallow"
+      "BL" -> "blowing"
+      "BC" -> "patchy"
+      "SH" -> "showers"
+      "PR" -> "partial"
+      "DR" -> "drifting"
+      "TS" -> "thunderstorms"
+      "FZ" -> "freezing"
+      _ -> nil
+    end
+  end
+
+  defp translate_precipitation(precipitation) do
+    case precipitation do
+      "DZ" -> "drizzle"
+      "IC" -> "ice crystals"
+      "UP" -> "unknown"
+      "RA" -> "rado"
+      "PL" -> "ice pellets"
+      "SN" -> "snow"
+      "GR" -> "hail"
+      "SG" -> "snow grados"
+      "GS" -> "small hail"
+      _ -> nil
+    end
+  end
+
+  defp translate_obscurity(obscurity) do
+    case obscurity do
+      "BR" -> "mist"
+      "SA" -> "sand"
+      "FU" -> "smoke"
+      "FG" -> "fog"
+      "HZ" -> "haze"
+      "VA" -> "volcanic ash"
+      "PY" -> "spray"
+      "DU" -> "dust"
+      _ -> nil
+    end
+  end
+
+  defp translate_phenomena(quality, description, precipitation, obscurity, other) do
+    [
+      translate_quality(quality),
+      translate_description(description),
+      translate_precipitation(precipitation),
+      translate_obscurity(obscurity),
+      translate_other(other)
+    ]
+  end
+
   def parse(metar_string) do
     %{
       "condition" => c,
       "dewpoint" => dp,
       "gusting" => _g,
+      "phenomena" => _p,
+      "quality" => qual,
+      "description" => desc,
+      "precipitation" => prec,
+      "obscurity" => obs,
+      "other" => oth,
       "temperature" => t,
       "wind_speed" => ws,
       "wind_direction" => wd
     } =
       Regex.named_captures(
-        ~r/(?<gusting>\d{2}G)?(?<wind_direction>\d{3})(?<wind_speed>\d{2})KT\s(?:.*)(?<condition>(CLR|SKC|FEW|SCT|BKN|OVC|VV))(?:[0-9]+)?\s(?<temperature>(M)?(\d{2}))\/(?<dewpoint>(M)?(\d{2}))\s/,
+        ~r/(?<gusting>\d{2}G)?(?<wind_direction>\d{3})(?<wind_speed>\d{2})KT\s(?:.*)(?<condition>(CLR|SKC|FEW|SCT|BKN|OVC|VV))(?:[0-9]+)?\s(?<temperature>(M)?(\d{2}))\/(?<dewpoint>(M)?(\d{2}))\s(?:.*)RMK(?<phenomena>(?<quality>\+|-|VC)?(?<description>MI|BL|BC|SH|PR|DR|TS|FZ)?(?<precipitation>DZ|IC|UP|RA|PL|SN|GR|SG|GS)?(?<obscurity>BR|SA|FU|HZ|VA|PY|DU|FG)?(?<other>SQ|FC|SS|DS|PO)?)/,
         metar_string
       )
 
     %{
       condition: translate_condition(c),
       dewpoint_c: c_to_int(dp),
+      phenomena:
+        Enum.join(Enum.reject(translate_phenomena(qual, desc, prec, obs, oth), &is_nil/1), " "),
       relative_humidity: round(relative_humidity(c_to_int(t), c_to_int(dp))),
       temperature_c: c_to_int(t),
       wind_bearing: String.to_integer(wd),
@@ -131,6 +212,7 @@ case System.argv() do
 
       @metar "2023/01/09 15:55\nKRYV 091555Z AUTO 22006KT 7SM CLR M02/M04 A3009 RMK AO2 T10211045\n"
       @metar_dfw "2023/01/10 20:53\nKDFW 102053Z 21018KT 10SM BKN250 28/07 A2983 RMK AO2 PK WND 22026/2011 SLP095 T02830067 56036\n"
+      @metar_hnb "2023/01/12 00:56\nKHNB 120056Z AUTO 00000KT 4SM BR BKN036 12/12 A2984 RMK AO2 SLP105 T01170117\n"
 
       test "Temperature and dewpoint in Celsius" do
         result = Wx.parse(@metar)
@@ -177,6 +259,11 @@ case System.argv() do
       test "Check conditions" do
         result = Wx.parse(@metar_dfw)
         assert "mostly cloudy" = result.condition
+      end
+
+      test "Check phenomena" do
+        result = Wx.parse(@metar_hnb)
+        assert "mist" = result.phenomena
       end
     end
 
