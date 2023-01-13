@@ -9,7 +9,7 @@ Mix.install([
 
 defmodule Wx do
   # The URL for METAR data
-  @data_url "https://tgftp.nws.noaa.gov/data/observations/metar/stations/KMDW.TXT"
+  @data_url "https://tgftp.nws.noaa.gov/data/observations/metar/stations/KMSN.TXT"
 
   def main(_args) do
     output = parse(metar())
@@ -18,6 +18,8 @@ defmodule Wx do
 
   defp c_to_int("M" <> str), do: -c_to_int(str)
   defp c_to_int(str), do: String.to_integer(str)
+  defp kt_to_int(""), do: nil
+  defp kt_to_int(str), do: String.to_integer(str)
 
   defp relative_humidity(temp, dewpoint) do
     100 *
@@ -169,7 +171,7 @@ defmodule Wx do
     %{
       "condition" => c,
       "dewpoint" => dp,
-      "gusting" => _g,
+      "gusting" => g,
       "quality" => qual,
       "description" => desc,
       "precipitation" => prec,
@@ -181,7 +183,7 @@ defmodule Wx do
       "wind_direction" => wd
     } =
       Regex.named_captures(
-        ~r/(?<gusting>\d{2}G)?(?<wind_direction>\d{3})(?<wind_speed>\d{2})KT\s(?<visibility>\d+)SM(?:\s(?<quality>\+|-|VC)?(?<description>MI|BL|BC|SH|PR|DR|TS|FZ)?(?<precipitation>DZ|IC|UP|RA|PL|SN|GR|SG|GS)?(?<obscurity>BR|SA|FU|HZ|VA|PY|DU|FG)?(?<other>SQ|FC|SS|DS|PO)?)?\s(?<condition>CLR|SKC|FEW|SCT|BKN|OVC|VV)(?:\d{3})?(?:.*)?\s(?<temperature>M?(\d{2}))\/(?<dewpoint>M?(\d{2}))/,
+        ~r/(?<wind_direction>\d{3})(?<wind_speed>\d{2})(?:G(?<gusting>\d{2}))?KT\s(?<visibility>\d+)SM(?:\s(?<quality>\+|-|VC)?(?<description>MI|BL|BC|SH|PR|DR|TS|FZ)?(?<precipitation>DZ|IC|UP|RA|PL|SN|GR|SG|GS)?(?<obscurity>BR|SA|FU|HZ|VA|PY|DU|FG)?(?<other>SQ|FC|SS|DS|PO)?)?\s(?<condition>CLR|SKC|FEW|SCT|BKN|OVC|VV)(?:\d{3})?(?:.*)?\s(?<temperature>M?(\d{2}))\/(?<dewpoint>M?(\d{2}))/,
         metar_string
       )
 
@@ -193,6 +195,7 @@ defmodule Wx do
       relative_humidity: round(relative_humidity(c_to_int(t), c_to_int(dp))),
       temperature_c: c_to_int(t),
       wind_bearing: String.to_integer(wd),
+      wind_gusting_kt: kt_to_int(g),
       wind_speed_kt: String.to_integer(ws)
     }
   end
@@ -214,6 +217,7 @@ case System.argv() do
       @metar_dfw "2023/01/10 20:53\nKDFW 102053Z 21018KT 10SM BKN250 28/07 A2983 RMK AO2 PK WND 22026/2011 SLP095 T02830067 56036\n"
       @metar_hnb "2023/01/12 00:56\nKHNB 120056Z AUTO 00000KT 4SM BR BKN036 12/12 A2984 RMK AO2 SLP105 T01170117\n"
       @metar_mdw "2023/01/12 01:26\nKMDW 120126Z 19003KT 8SM BKN021 OVC033 09/06 A2980 RMK AO2 T00890056\n"
+      @metar_msn "2023/01/13 15:53\nKMSN 131553Z 36010G18KT 10SM OVC029 M03/M08 A3030 RMK AO2 SLP273 T10281083\n"
 
       test "Temperature and dewpoint in Celsius" do
         assert %{
@@ -228,6 +232,11 @@ case System.argv() do
       test "Wind speed conversion" do
         assert 11 = Wx.convert_wind_speed(Wx.parse(@metar_ryv).wind_speed_kt, "kph")
         assert 7 = Wx.convert_wind_speed(Wx.parse(@metar_ryv).wind_speed_kt, "mph")
+      end
+
+      test "Wind speed conversion with gusts" do
+        assert 12 = Wx.convert_wind_speed(Wx.parse(@metar_msn).wind_speed_kt, "mph")
+        assert 21 = Wx.convert_wind_speed(Wx.parse(@metar_msn).wind_gusting_kt, "mph")
       end
 
       test "Temperature conversion" do
