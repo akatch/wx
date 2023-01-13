@@ -210,7 +210,7 @@ case System.argv() do
     defmodule WxTest do
       use ExUnit.Case, async: true
 
-      @metar "2023/01/09 15:55\nKRYV 091555Z AUTO 22006KT 7SM CLR M02/M04 A3009 RMK AO2 T10211045\n"
+      @metar_ryv "2023/01/09 15:55\nKRYV 091555Z AUTO 22006KT 7SM CLR M02/M04 A3009 RMK AO2 T10211045\n"
       @metar_dfw "2023/01/10 20:53\nKDFW 102053Z 21018KT 10SM BKN250 28/07 A2983 RMK AO2 PK WND 22026/2011 SLP095 T02830067 56036\n"
       @metar_hnb "2023/01/12 00:56\nKHNB 120056Z AUTO 00000KT 4SM BR BKN036 12/12 A2984 RMK AO2 SLP105 T01170117\n"
       @metar_mdw "2023/01/12 01:26\nKMDW 120126Z 19003KT 8SM BKN021 OVC033 09/06 A2980 RMK AO2 T00890056\n"
@@ -222,25 +222,25 @@ case System.argv() do
                  relative_humidity: 86,
                  temperature_c: -2,
                  wind_speed_kt: 6
-               } = Wx.parse(@metar)
+               } = Wx.parse(@metar_ryv)
       end
 
       test "Wind speed conversion" do
-        assert 11 = Wx.convert_wind_speed(Wx.parse(@metar).wind_speed_kt, "kph")
-        assert 7 = Wx.convert_wind_speed(Wx.parse(@metar).wind_speed_kt, "mph")
+        assert 11 = Wx.convert_wind_speed(Wx.parse(@metar_ryv).wind_speed_kt, "kph")
+        assert 7 = Wx.convert_wind_speed(Wx.parse(@metar_ryv).wind_speed_kt, "mph")
       end
 
       test "Temperature conversion" do
-        assert 28 = Wx.convert_temperature(Wx.parse(@metar).temperature_c, "f")
-        assert 268 = Wx.convert_temperature(Wx.parse(@metar).temperature_c, "k")
+        assert 28 = Wx.convert_temperature(Wx.parse(@metar_ryv).temperature_c, "f")
+        assert 268 = Wx.convert_temperature(Wx.parse(@metar_ryv).temperature_c, "k")
       end
 
       test "Calculate wind chill" do
         assert -6 =
                  round(
                    Wx.calculate_wind_chill(
-                     Wx.parse(@metar).temperature_c,
-                     Wx.convert_wind_speed(Wx.parse(@metar).wind_speed_kt, "kph")
+                     Wx.parse(@metar_ryv).temperature_c,
+                     Wx.convert_wind_speed(Wx.parse(@metar_ryv).wind_speed_kt, "kph")
                    )
                  )
       end
