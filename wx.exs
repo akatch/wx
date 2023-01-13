@@ -88,7 +88,7 @@ defmodule Wx do
       "BKN" -> "mostly cloudy"
       "OVC" -> "overcast"
       "VV" -> "vertical visibility"
-      _ -> false
+      "" -> false
     end
   end
 
@@ -97,7 +97,7 @@ defmodule Wx do
       "+" -> "heavy"
       "-" -> "light"
       "VC" -> "vicinity"
-      _ -> nil
+      "" -> nil
     end
   end
 
@@ -108,7 +108,7 @@ defmodule Wx do
       "FC" -> "tornado"
       "DS" -> "dust storm"
       "PO" -> "sand whirls"
-      _ -> nil
+      "" -> nil
     end
   end
 
@@ -122,7 +122,7 @@ defmodule Wx do
       "DR" -> "drifting"
       "TS" -> "thunderstorms"
       "FZ" -> "freezing"
-      _ -> nil
+      "" -> nil
     end
   end
 
@@ -137,7 +137,7 @@ defmodule Wx do
       "GR" -> "hail"
       "SG" -> "snow grados"
       "GS" -> "small hail"
-      _ -> nil
+      "" -> nil
     end
   end
 
@@ -151,7 +151,7 @@ defmodule Wx do
       "VA" -> "volcanic ash"
       "PY" -> "spray"
       "DU" -> "dust"
-      _ -> nil
+      "" -> nil
     end
   end
 
@@ -176,11 +176,12 @@ defmodule Wx do
       "obscurity" => obs,
       "other" => oth,
       "temperature" => t,
+      "visibility" => _v,
       "wind_speed" => ws,
       "wind_direction" => wd
     } =
       Regex.named_captures(
-        ~r/(?<gusting>\d{2}G)?(?<wind_direction>\d{3})(?<wind_speed>\d{2})KT\s(?:\d+SM)(?:\s(?<quality>\+|-|VC)?(?<description>MI|BL|BC|SH|PR|DR|TS|FZ)?(?<precipitation>DZ|IC|UP|RA|PL|SN|GR|SG|GS)?(?<obscurity>BR|SA|FU|HZ|VA|PY|DU|FG)?(?<other>SQ|FC|SS|DS|PO)?)?\s(?<condition>(CLR|SKC|FEW|SCT|BKN|OVC|VV))(?:[0-9]+)?\s(?<temperature>M?(\d{2}))\/(?<dewpoint>M?(\d{2}))/,
+        ~r/(?<gusting>\d{2}G)?(?<wind_direction>\d{3})(?<wind_speed>\d{2})KT\s(?<visibility>\d+)SM(?:\s(?<quality>\+|-|VC)?(?<description>MI|BL|BC|SH|PR|DR|TS|FZ)?(?<precipitation>DZ|IC|UP|RA|PL|SN|GR|SG|GS)?(?<obscurity>BR|SA|FU|HZ|VA|PY|DU|FG)?(?<other>SQ|FC|SS|DS|PO)?)?\s(?<condition>CLR|SKC|FEW|SCT|BKN|OVC|VV)(?:\d{3})?\s(?<temperature>M?(\d{2}))\/(?<dewpoint>M?(\d{2}))/,
         metar_string
       )
 
@@ -212,6 +213,7 @@ case System.argv() do
       @metar "2023/01/09 15:55\nKRYV 091555Z AUTO 22006KT 7SM CLR M02/M04 A3009 RMK AO2 T10211045\n"
       @metar_dfw "2023/01/10 20:53\nKDFW 102053Z 21018KT 10SM BKN250 28/07 A2983 RMK AO2 PK WND 22026/2011 SLP095 T02830067 56036\n"
       @metar_hnb "2023/01/12 00:56\nKHNB 120056Z AUTO 00000KT 4SM BR BKN036 12/12 A2984 RMK AO2 SLP105 T01170117\n"
+      @metar_mdw "2023/01/12 01:26\nKMDW 120126Z 19003KT 8SM BKN021 OVC033 09/06 A2980 RMK AO2 T00890056\n"
 
       test "Temperature and dewpoint in Celsius" do
         result = Wx.parse(@metar)
@@ -257,6 +259,11 @@ case System.argv() do
 
       test "Check conditions" do
         result = Wx.parse(@metar_dfw)
+        assert "mostly cloudy" = result.condition
+      end
+
+      test "Check multiple conditions" do
+        result = Wx.parse(@metar_mdw)
         assert "mostly cloudy" = result.condition
       end
 
