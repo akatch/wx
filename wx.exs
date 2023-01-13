@@ -216,60 +216,55 @@ case System.argv() do
       @metar_mdw "2023/01/12 01:26\nKMDW 120126Z 19003KT 8SM BKN021 OVC033 09/06 A2980 RMK AO2 T00890056\n"
 
       test "Temperature and dewpoint in Celsius" do
-        result = Wx.parse(@metar)
-
         assert %{
                  condition: "clear",
                  dewpoint_c: -4,
                  relative_humidity: 86,
                  temperature_c: -2,
                  wind_speed_kt: 6
-               } = result
+               } = Wx.parse(@metar)
       end
 
       test "Wind speed conversion" do
-        result = Wx.parse(@metar)
-        assert 11 = Wx.convert_wind_speed(result.wind_speed_kt, "kph")
-        assert 7 = Wx.convert_wind_speed(result.wind_speed_kt, "mph")
+        assert 11 = Wx.convert_wind_speed(Wx.parse(@metar).wind_speed_kt, "kph")
+        assert 7 = Wx.convert_wind_speed(Wx.parse(@metar).wind_speed_kt, "mph")
       end
 
       test "Temperature conversion" do
-        result = Wx.parse(@metar)
-        assert 28 = Wx.convert_temperature(result.temperature_c, "f")
-        assert 268 = Wx.convert_temperature(result.temperature_c, "k")
+        assert 28 = Wx.convert_temperature(Wx.parse(@metar).temperature_c, "f")
+        assert 268 = Wx.convert_temperature(Wx.parse(@metar).temperature_c, "k")
       end
 
       test "Calculate wind chill" do
-        result = Wx.parse(@metar)
-
         assert -6 =
                  round(
                    Wx.calculate_wind_chill(
-                     result.temperature_c,
-                     Wx.convert_wind_speed(result.wind_speed_kt, "kph")
+                     Wx.parse(@metar).temperature_c,
+                     Wx.convert_wind_speed(Wx.parse(@metar).wind_speed_kt, "kph")
                    )
                  )
       end
 
       test "Calculate heat index" do
-        result = Wx.parse(@metar_dfw)
-
-        assert 27 = round(Wx.calculate_heat_index(result.temperature_c, result.relative_humidity))
+        assert 27 =
+                 round(
+                   Wx.calculate_heat_index(
+                     Wx.parse(@metar_dfw).temperature_c,
+                     Wx.parse(@metar_dfw).relative_humidity
+                   )
+                 )
       end
 
       test "Check conditions" do
-        result = Wx.parse(@metar_dfw)
-        assert "mostly cloudy" = result.condition
+        assert "mostly cloudy" = Wx.parse(@metar_dfw).condition
       end
 
       test "Check multiple conditions" do
-        result = Wx.parse(@metar_mdw)
-        assert "mostly cloudy" = result.condition
+        assert "mostly cloudy" = Wx.parse(@metar_mdw).condition
       end
 
       test "Check phenomena" do
-        result = Wx.parse(@metar_hnb)
-        assert "mist" = result.phenomena
+        assert "mist" = Wx.parse(@metar_hnb).phenomena
       end
     end
 
