@@ -223,122 +223,162 @@ case System.argv() do
     defmodule WxTest do
       use ExUnit.Case, async: true
 
-      test "METAR parsing" do
-        cases = [
+      @cases [
+        {
+          "2023/01/13 15:53\nKMSN 131553Z 36010G18KT 10SM OVC029 M03/M08 A3030 RMK AO2 SLP273 T10281083\n",
           %{
-            input:
-              "2023/01/13 15:53\nKMSN 131553Z 36010G18KT 10SM OVC029 M03/M08 A3030 RMK AO2 SLP273 T10281083\n",
-            output: %{
-              condition: "overcast",
-              dewpoint_c: -8,
-              phenomena: nil,
-              relative_humidity: 68,
-              temperature_c: -3,
-              visibility_mi: 10,
-              wind_bearing: 360,
-              wind_gusting_kt: 18,
-              wind_speed_kt: 10
-            }
+            condition: "overcast",
+            dewpoint_c: -8,
+            phenomena: nil,
+            relative_humidity: 68,
+            temperature_c: -3,
+            visibility_mi: 10,
+            wind_bearing: 360,
+            wind_gusting_kt: 18,
+            wind_speed_kt: 10
           },
           %{
-            input:
-              "2023/01/09 15:55\nKRYV 091555Z AUTO 22006KT 7SM CLR M02/M04 A3009 RMK AO2 T10211045\n",
-            output: %{
-              condition: "clear",
-              dewpoint_c: -4,
-              phenomena: nil,
-              relative_humidity: 86,
-              temperature_c: -2,
-              visibility_mi: 7,
-              wind_bearing: 220,
-              wind_gusting_kt: nil,
-              wind_speed_kt: 6
-            }
-          },
-          %{
-            input:
-              "2023/01/12 01:26\nKMDW 120126Z 19003KT 8SM BKN021 OVC033 09/06 A2980 RMK AO2 T00890056\n",
-            output: %{
-              condition: "mostly cloudy",
-              dewpoint_c: 6,
-              phenomena: nil,
-              relative_humidity: 81,
-              temperature_c: 9,
-              visibility_mi: 8,
-              wind_bearing: 190,
-              wind_gusting_kt: nil,
-              wind_speed_kt: 3
-            }
-          },
-          %{
-            input:
-              "2023/01/12 00:56\nKHNB 120056Z AUTO 00000KT 4SM BR BKN036 12/12 A2984 RMK AO2 SLP105 T01170117\n",
-            output: %{
-              condition: "mostly cloudy",
-              dewpoint_c: 12,
-              phenomena: "mist",
-              relative_humidity: 100,
-              temperature_c: 12,
-              visibility_mi: 4,
-              wind_bearing: 0,
-              wind_gusting_kt: nil,
-              wind_speed_kt: 0
-            }
-          },
-          %{
-            input:
-              "2023/01/10 20:53\nKDFW 102053Z 21018KT 10SM BKN250 28/07 A2983 RMK AO2 PK WND 22026/2011 SLP095 T02830067 56036\n",
-            output: %{
-              condition: "mostly cloudy",
-              dewpoint_c: 7,
-              phenomena: nil,
-              relative_humidity: 27,
-              temperature_c: 28,
-              visibility_mi: 10,
-              wind_bearing: 210,
-              wind_gusting_kt: nil,
-              wind_speed_kt: 8
-            }
+            heat_index_c: nil,
+            temperature_f: 27,
+            temperature_k: 267,
+            wind_chill_c: -9,
+            wind_speed_kph: 19,
+            wind_speed_mph: 12
           }
-        ]
+        },
+        {
+          "2023/01/09 15:55\nKRYV 091555Z AUTO 22006KT 7SM CLR M02/M04 A3009 RMK AO2 T10211045\n",
+          %{
+            condition: "clear",
+            dewpoint_c: -4,
+            phenomena: nil,
+            relative_humidity: 86,
+            temperature_c: -2,
+            visibility_mi: 7,
+            wind_bearing: 220,
+            wind_gusting_kt: nil,
+            wind_speed_kt: 6
+          },
+          %{
+            heat_index_c: nil,
+            temperature_f: 28,
+            temperature_k: 268,
+            wind_chill_c: -6,
+            wind_speed_kph: 11,
+            wind_speed_mph: 7
+          }
+        },
+        {
+          "2023/01/12 01:26\nKMDW 120126Z 19003KT 8SM BKN021 OVC033 09/06 A2980 RMK AO2 T00890056\n",
+          %{
+            condition: "mostly cloudy",
+            dewpoint_c: 6,
+            phenomena: nil,
+            relative_humidity: 81,
+            temperature_c: 9,
+            visibility_mi: 8,
+            wind_bearing: 190,
+            wind_gusting_kt: nil,
+            wind_speed_kt: 3
+          },
+          %{
+            heat_index_c: nil,
+            temperature_f: 48,
+            temperature_k: 279,
+            wind_chill_c: 8,
+            wind_speed_kph: 6,
+            wind_speed_mph: 3
+          }
+        },
+        {
+          "2023/01/12 00:56\nKHNB 120056Z AUTO 00000KT 4SM BR BKN036 12/12 A2984 RMK AO2 SLP105 T01170117\n",
+          %{
+            condition: "mostly cloudy",
+            dewpoint_c: 12,
+            phenomena: "mist",
+            relative_humidity: 100,
+            temperature_c: 12,
+            visibility_mi: 4,
+            wind_bearing: 0,
+            wind_gusting_kt: nil,
+            wind_speed_kt: 0
+          },
+          %{
+            heat_index_c: nil,
+            temperature_f: 54,
+            temperature_k: 282,
+            wind_chill_c: nil,
+            wind_speed_kph: 0,
+            wind_speed_mph: 0
+          }
+        },
+        {
+          "2023/01/10 20:53\nKDFW 102053Z 21018KT 10SM BKN250 28/07 A2983 RMK AO2 PK WND 22026/2011 SLP095 T02830067 56036\n",
+          %{
+            condition: "mostly cloudy",
+            dewpoint_c: 7,
+            phenomena: nil,
+            relative_humidity: 27,
+            temperature_c: 28,
+            visibility_mi: 10,
+            wind_bearing: 210,
+            wind_gusting_kt: nil,
+            wind_speed_kt: 18
+          },
+          %{
+            heat_index_c: 27,
+            temperature_f: 82,
+            temperature_k: 298,
+            wind_chill_c: nil,
+            wind_speed_kph: 33,
+            wind_speed_mph: 21
+          }
+        }
+      ]
 
-        for {input, output} <- cases, do: assert(output = Wx.parse(input))
+      test "METAR parsing" do
+        for {input, output} <- @cases, do: assert(output == Wx.parse(input))
       end
 
-      #      test "Wind speed conversion" do
-      #        assert 11 = Wx.convert_wind_speed(@cases[0].output.wind_speed_kt, "kph")
-      #        assert 7 = Wx.convert_wind_speed(@cases[0].output.wind_speed_kt, "mph")
-      #      end
+      test "convert wind speed to mph" do
+        for {_input, output, conv} <- @cases,
+            do: assert(conv.wind_speed_mph == Wx.convert_wind_speed(output.wind_speed_kt, "mph"))
+      end
 
-      #      test "Wind speed conversion with gusts" do
-      #        assert 12 = Wx.convert_wind_speed(Wx.parse(@metar_msn).wind_speed_kt, "mph")
-      #        assert 21 = Wx.convert_wind_speed(Wx.parse(@metar_msn).wind_gusting_kt, "mph")
-      #      end
-      #
-      #      test "Temperature conversion" do
-      #        assert 28 = Wx.convert_temperature(Wx.parse(@metar_ryv).temperature_c, "f")
-      #        assert 268 = Wx.convert_temperature(Wx.parse(@metar_ryv).temperature_c, "k")
-      #      end
-      #
-      #      test "Calculate wind chill" do
-      #        assert -6 =
-      #                 round(
-      #                   Wx.calculate_wind_chill(
-      #                     Wx.parse(@metar_ryv).temperature_c,
-      #                     Wx.convert_wind_speed(Wx.parse(@metar_ryv).wind_speed_kt, "kph")
-      #                   )
-      #                 )
-      #      end
-      #
-      #      test "Calculate heat index" do
-      #        assert 27 =
-      #                 round(
-      #                   Wx.calculate_heat_index(
-      #                     Wx.parse(@metar_dfw).temperature_c,
-      #                     Wx.parse(@metar_dfw).relative_humidity
-      #                   )
-      #                 )
-      #      end
+      test "convert wind speed to kph" do
+        for {_input, output, conv} <- @cases,
+            do: assert(conv.wind_speed_kph == Wx.convert_wind_speed(output.wind_speed_kt, "kph"))
+      end
+
+      test "convert temperature to Fahrenheit" do
+        for {_input, output, conv} <- @cases,
+            do: assert(conv.temperature_f == Wx.convert_temperature(output.temperature_c, "f"))
+      end
+
+      test "convert temperature to Kelvins" do
+        for {_input, output, conv} <- @cases,
+            do: assert(conv.temperature_k == Wx.convert_temperature(output.temperature_c, "k"))
+      end
+
+      test "calculate wind chill" do
+        for {_input, output, conv} <- @cases,
+            conv.wind_chill_c,
+            do:
+              assert(
+                conv.wind_chill_c ==
+                  round(Wx.calculate_wind_chill(output.temperature_c, conv.wind_speed_kph))
+              )
+      end
+
+      test "calculate heat index" do
+        for {_input, output, conv} <- @cases,
+            conv.heat_index_c,
+            do:
+              assert(
+                conv.heat_index_c ==
+                  round(Wx.calculate_heat_index(output.temperature_c, output.relative_humidity))
+              )
+      end
     end
 
   # Display a summary of current conditions
