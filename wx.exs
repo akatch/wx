@@ -213,6 +213,30 @@ defmodule Wx do
   def metar() do
     Req.get!(@data_url).body
   end
+
+  def feels_like(temperature_c, wind_speed_kph, relative_humidity) do
+    calculate_heat_index(temperature_c, relative_humidity) ||
+      calculate_wind_chill(temperature_c, wind_speed_kph) || nil
+  end
+
+  def summarize(metar) do
+    result = Wx.parse(metar)
+    temp = Wx.convert_temperature(result.temperature_c, "f")
+    outside = result.phenomena || result.condition
+
+    feelslike =
+      Wx.feels_like(
+        result.temperature_c,
+        Wx.convert_wind_speed(result.wind_speed_kt, "kph"),
+        result.relative_humidity
+      )
+
+    if feelslike do
+      "#{temp}°F (#{round(Wx.convert_temperature(feelslike, "f"))}°F) #{outside}"
+    else
+      "#{temp}°F #{outside}"
+    end
+  end
 end
 
 case System.argv() do
@@ -239,6 +263,7 @@ case System.argv() do
           },
           %{
             heat_index_c: nil,
+            summary: "27°F (16°F) overcast",
             temperature_f: 27,
             temperature_k: 267,
             wind_chill_c: -9,
@@ -261,6 +286,7 @@ case System.argv() do
           },
           %{
             heat_index_c: nil,
+            summary: "28°F (21°F) clear",
             temperature_f: 28,
             temperature_k: 268,
             wind_chill_c: -6,
@@ -283,6 +309,7 @@ case System.argv() do
           },
           %{
             heat_index_c: nil,
+            summary: "48°F (47°F) mostly cloudy",
             temperature_f: 48,
             temperature_k: 279,
             wind_chill_c: 8,
@@ -305,6 +332,7 @@ case System.argv() do
           },
           %{
             heat_index_c: nil,
+            summary: "54°F mist",
             temperature_f: 54,
             temperature_k: 282,
             wind_chill_c: nil,
@@ -327,6 +355,7 @@ case System.argv() do
           },
           %{
             heat_index_c: 27,
+            summary: "82°F (81°F) mostly cloudy",
             temperature_f: 82,
             temperature_k: 298,
             wind_chill_c: nil,
@@ -379,12 +408,17 @@ case System.argv() do
                   round(Wx.calculate_heat_index(output.temperature_c, output.relative_humidity))
               )
       end
+
+      test "summarize current conditions" do
+        for {input, _output, conv} <- @cases,
+            conv.summary,
+            do: assert(conv.summary == Wx.summarize(input))
+      end
     end
 
   # Display a summary of current conditions
   ["summary"] ->
-    result = Wx.parse(Wx.metar())
-    IO.puts("#{Wx.convert_temperature(result.temperature_c, "f")}°F #{result.condition}")
+    IO.puts(Wx.summarize(Wx.metar()))
 
   # Display the raw METAR string
   ["metar"] ->
