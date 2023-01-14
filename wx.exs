@@ -178,7 +178,7 @@ defmodule Wx do
       "obscurity" => obs,
       "other" => oth,
       "temperature" => t,
-      "visibility" => _v,
+      "visibility" => v,
       "wind_speed" => ws,
       "wind_direction" => wd
     } =
@@ -194,6 +194,7 @@ defmodule Wx do
         Enum.join(Enum.reject(translate_phenomena(qual, desc, prec, obs, oth), &is_nil/1), " "),
       relative_humidity: round(relative_humidity(c_to_int(t), c_to_int(dp))),
       temperature_c: c_to_int(t),
+      visibility_mi: String.to_integer(v),
       wind_bearing: String.to_integer(wd),
       wind_gusting_kt: kt_to_int(g),
       wind_speed_kt: String.to_integer(ws)
@@ -225,6 +226,7 @@ case System.argv() do
                  dewpoint_c: -4,
                  relative_humidity: 86,
                  temperature_c: -2,
+                 visibility_mi: 7,
                  wind_speed_kt: 6
                } = Wx.parse(@metar_ryv)
       end
