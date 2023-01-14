@@ -9,7 +9,8 @@ Mix.install([
 
 defmodule Wx do
   # The URL for METAR data
-  @data_url "https://tgftp.nws.noaa.gov/data/observations/metar/stations/KMSN.TXT"
+  # TODO accept station as argument
+  @data_url "https://tgftp.nws.noaa.gov/data/observations/metar/stations/KRYV.TXT"
 
   def main(_args) do
     output = parse(metar())
@@ -28,8 +29,7 @@ defmodule Wx do
   end
 
   def convert_wind_speed(speed, unit) do
-    case unit do
-      # TODO case insensitive unit
+    case String.downcase(unit) do
       "kph" -> round(speed * 1.852)
       "mph" -> round(speed * 1.151)
       _ -> speed
@@ -158,13 +158,23 @@ defmodule Wx do
   end
 
   defp translate_phenomena(quality, description, precipitation, obscurity, other) do
-    [
-      translate_quality(quality),
-      translate_description(description),
-      translate_precipitation(precipitation),
-      translate_obscurity(obscurity),
-      translate_other(other)
-    ]
+    phenomena =
+      Enum.reject(
+        [
+          translate_quality(quality),
+          translate_description(description),
+          translate_precipitation(precipitation),
+          translate_obscurity(obscurity),
+          translate_other(other)
+        ],
+        &is_nil/1
+      )
+
+    if length(phenomena) > 0 do
+      Enum.join(phenomena, " ")
+    else
+      nil
+    end
   end
 
   def parse(metar_string) do
@@ -190,8 +200,7 @@ defmodule Wx do
     %{
       condition: translate_condition(c),
       dewpoint_c: c_to_int(dp),
-      phenomena:
-        Enum.join(Enum.reject(translate_phenomena(qual, desc, prec, obs, oth), &is_nil/1), " "),
+      phenomena: translate_phenomena(qual, desc, prec, obs, oth),
       relative_humidity: round(relative_humidity(c_to_int(t), c_to_int(dp))),
       temperature_c: c_to_int(t),
       visibility_mi: String.to_integer(v),
@@ -220,15 +229,66 @@ case System.argv() do
       @metar_mdw "2023/01/12 01:26\nKMDW 120126Z 19003KT 8SM BKN021 OVC033 09/06 A2980 RMK AO2 T00890056\n"
       @metar_msn "2023/01/13 15:53\nKMSN 131553Z 36010G18KT 10SM OVC029 M03/M08 A3030 RMK AO2 SLP273 T10281083\n"
 
-      test "Temperature and dewpoint in Celsius" do
+      test "METAR parsing" do
         assert %{
                  condition: "clear",
                  dewpoint_c: -4,
+                 phenomena: nil,
                  relative_humidity: 86,
                  temperature_c: -2,
                  visibility_mi: 7,
+                 wind_bearing: 220,
+                 wind_gusting_kt: nil,
                  wind_speed_kt: 6
                } = Wx.parse(@metar_ryv)
+
+        assert %{
+                 condition: "mostly cloudy",
+                 dewpoint_c: 7,
+                 phenomena: nil,
+                 relative_humidity: 27,
+                 temperature_c: 28,
+                 visibility_mi: 10,
+                 wind_bearing: 210,
+                 wind_gusting_kt: nil,
+                 wind_speed_kt: 18
+               } = Wx.parse(@metar_dfw)
+
+        assert %{
+                 condition: "mostly cloudy",
+                 dewpoint_c: 12,
+                 phenomena: "mist",
+                 relative_humidity: 100,
+                 temperature_c: 12,
+                 visibility_mi: 4,
+                 wind_bearing: 0,
+                 wind_gusting_kt: nil,
+                 wind_speed_kt: 0
+               } = Wx.parse(@metar_hnb)
+
+        assert %{
+                 condition: "mostly cloudy",
+                 dewpoint_c: 6,
+                 phenomena: nil,
+                 relative_humidity: 81,
+                 temperature_c: 9,
+                 visibility_mi: 8,
+                 wind_bearing: 190,
+                 wind_gusting_kt: nil,
+                 wind_speed_kt: 3
+               } = Wx.parse(@metar_mdw)
+
+        assert %{
+                 condition: "overcast",
+                 dewpoint_c: -8,
+                 phenomena: nil,
+                 relative_humidity: 68,
+                 temperature_c: -3,
+                 visibility_mi: 10,
+                 wind_bearing: 360,
+                 wind_gusting_kt: 18,
+                 wind_speed_kt: 10
+               } = Wx.parse(@metar_msn)
       end
 
       test "Wind speed conversion" do
@@ -264,18 +324,6 @@ case System.argv() do
                      Wx.parse(@metar_dfw).relative_humidity
                    )
                  )
-      end
-
-      test "Check conditions" do
-        assert "mostly cloudy" = Wx.parse(@metar_dfw).condition
-      end
-
-      test "Check multiple conditions" do
-        assert "mostly cloudy" = Wx.parse(@metar_mdw).condition
-      end
-
-      test "Check phenomena" do
-        assert "mist" = Wx.parse(@metar_hnb).phenomena
       end
     end
 
