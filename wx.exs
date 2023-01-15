@@ -30,8 +30,8 @@ defmodule Wx do
 
   def convert_wind_speed(speed, unit) do
     case String.downcase(unit) do
-      "kph" -> round(speed * 1.852)
-      "mph" -> round(speed * 1.151)
+      "kph" -> speed * 1.852
+      "mph" -> speed * 1.151
       _ -> speed
     end
   end
@@ -371,12 +371,18 @@ case System.argv() do
 
       test "convert wind speed to mph" do
         for {_input, output, conv} <- @cases,
-            do: assert(conv.wind_speed_mph == Wx.convert_wind_speed(output.wind_speed_kt, "mph"))
+            do:
+              assert(
+                conv.wind_speed_mph == round(Wx.convert_wind_speed(output.wind_speed_kt, "mph"))
+              )
       end
 
       test "convert wind speed to kph" do
         for {_input, output, conv} <- @cases,
-            do: assert(conv.wind_speed_kph == Wx.convert_wind_speed(output.wind_speed_kt, "kph"))
+            do:
+              assert(
+                conv.wind_speed_kph == round(Wx.convert_wind_speed(output.wind_speed_kt, "kph"))
+              )
       end
 
       test "convert temperature to Fahrenheit" do
