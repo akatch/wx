@@ -37,7 +37,7 @@ defmodule Wx do
   end
 
   def convert_temperature(temperature, unit) do
-    case unit do
+    case String.downcase(unit) do
       "f" -> round(temperature * 9 / 5 + 32)
       "k" -> temperature + 270
       _ -> temperature
