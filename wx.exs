@@ -38,7 +38,7 @@ defmodule Wx do
 
   def convert_temperature(temperature, unit) do
     case String.downcase(unit) do
-      "f" -> round(temperature * 9 / 5 + 32)
+      "f" -> temperature * 9 / 5 + 32
       "k" -> temperature + 270
       _ -> temperature
     end
@@ -47,10 +47,10 @@ defmodule Wx do
   def calculate_wind_chill(temperature_c, wind_speed_kph) do
     cond do
       temperature_c > 10 ->
-        false
+        nil
 
       wind_speed_kph < 4.8 ->
-        false
+        nil
 
       true ->
         13.12 + 0.6215 * temperature_c - 11.37 * :math.pow(wind_speed_kph, 0.16) +
@@ -61,7 +61,7 @@ defmodule Wx do
   def calculate_heat_index(temperature_c, relative_humidity) do
     cond do
       temperature_c < 27 ->
-        false
+        nil
 
       true ->
         c1 = -8.78469475556
@@ -133,11 +133,11 @@ defmodule Wx do
       "DZ" -> "drizzle"
       "IC" -> "ice crystals"
       "UP" -> "unknown"
-      "RA" -> "rado"
+      "RA" -> "rain"
       "PL" -> "ice pellets"
       "SN" -> "snow"
       "GR" -> "hail"
-      "SG" -> "snow grados"
+      "SG" -> "snow grains"
       "GS" -> "small hail"
       "" -> nil
     end
@@ -221,7 +221,7 @@ defmodule Wx do
 
   def summarize(metar) do
     result = Wx.parse(metar)
-    temp = Wx.convert_temperature(result.temperature_c, "f")
+    temp = round(Wx.convert_temperature(result.temperature_c, "f"))
     outside = result.phenomena || result.condition
 
     feelslike =
@@ -387,7 +387,10 @@ case System.argv() do
 
       test "convert temperature to Fahrenheit" do
         for {_input, output, conv} <- @cases,
-            do: assert(conv.temperature_f == Wx.convert_temperature(output.temperature_c, "f"))
+            do:
+              assert(
+                conv.temperature_f == round(Wx.convert_temperature(output.temperature_c, "f"))
+              )
       end
 
       test "convert temperature to Kelvins" do
