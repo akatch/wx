@@ -9,14 +9,15 @@ Mix.install([
 
 defmodule Wx do
   # The URL for METAR data
-  # TODO accept station as argument
-  @data_url "https://tgftp.nws.noaa.gov/data/observations/metar/stations/KRYV.TXT"
+  @data_url "https://tgftp.nws.noaa.gov/data/observations/metar/stations/"
+  @default_station "KRYV"
 
   def main(_args) do
     output = parse(metar())
     IO.inspect(output)
   end
 
+  defp c_to_int(""), do: 0
   defp c_to_int("M" <> str), do: -c_to_int(str)
   defp c_to_int(str), do: String.to_integer(str)
   defp kt_to_int(""), do: nil
@@ -193,7 +194,7 @@ defmodule Wx do
       "wind_direction" => wd
     } =
       Regex.named_captures(
-        ~r/(?<wind_direction>\d{3})(?<wind_speed>\d{2})(?:G(?<gusting>\d{2}))?KT\s(?<visibility>\d+)SM(?:\s(?<quality>\+|-|VC)?(?<description>MI|BL|BC|SH|PR|DR|TS|FZ)?(?<precipitation>DZ|IC|UP|RA|PL|SN|GR|SG|GS)?(?<obscurity>BR|SA|FU|HZ|VA|PY|DU|FG)?(?<other>SQ|FC|SS|DS|PO)?)?\s(?<condition>CLR|SKC|FEW|SCT|BKN|OVC|VV)(?:\d{3})?(?:.*)?\s(?<temperature>M?(\d{2}))\/(?<dewpoint>M?(\d{2}))/,
+        ~r/(?<wind_direction>\d{3})(?<wind_speed>\d{2})(?:G(?<gusting>\d{2}))?KT\s(?<visibility>\d+)(?:SM)?(?:\s(?<quality>\+|-|VC)?(?<description>MI|BL|BC|SH|PR|DR|TS|FZ)?(?<precipitation>DZ|IC|UP|RA|PL|SN|GR|SG|GS)?(?<obscurity>BR|SA|FU|HZ|VA|PY|DU|FG)?(?<other>SQ|FC|SS|DS|PO)?)?\s(?<condition>CLR|SKC|FEW|SCT|BKN|OVC|VV)(?:\d{3})?(?:.*)?\s(?<temperature>M?(\d{2}))\/(?<dewpoint>M?(\d{2}))?/,
         metar_string
       )
 
@@ -206,12 +207,13 @@ defmodule Wx do
       visibility_mi: String.to_integer(v),
       wind_bearing: String.to_integer(wd),
       wind_gusting_kt: kt_to_int(g),
-      wind_speed_kt: String.to_integer(ws)
+      wind_speed_kt: kt_to_int(ws)
     }
   end
 
   def metar() do
-    Req.get!(@data_url).body
+    station = System.get_env("STATION", @default_station)
+    Req.get!(@data_url <> station <> ".TXT").body
   end
 
   def feels_like(temperature_c, wind_speed_kph, relative_humidity) do
@@ -432,6 +434,11 @@ case System.argv() do
   # Display the raw METAR string
   ["metar"] ->
     IO.inspect(Wx.metar())
+
+  ["debug"] ->
+    IO.inspect(Wx.metar())
+    Wx.main(System.argv())
+    IO.puts(Wx.summarize(Wx.metar()))
 
   # For any other argument (or none), execute Wx.main
   _ ->
