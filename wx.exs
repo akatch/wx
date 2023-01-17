@@ -4,7 +4,8 @@
 # (c) 2023 Al Bowles
 
 Mix.install([
-  {:req, "~> 0.3.4"}
+  {:req, "~> 0.3.4"},
+  {:metar, path: "../metar"}
 ])
 
 defmodule Wx do
@@ -13,17 +14,11 @@ defmodule Wx do
   @default_station "KRYV"
 
   def main(_args) do
-    output = parse(metar())
+    output = Metar.parse(metar())
     IO.inspect(output)
   end
 
-  defp c_to_int(""), do: 0
-  defp c_to_int("M" <> str), do: -c_to_int(str)
-  defp c_to_int(str), do: String.to_integer(str)
-  defp kt_to_int(""), do: nil
-  defp kt_to_int(str), do: String.to_integer(str)
-
-  defp relative_humidity(temp, dewpoint) do
+  def relative_humidity(temp, dewpoint) do
     100 *
       (:math.exp(17.625 * dewpoint / (243.04 + dewpoint)) /
          :math.exp(17.625 * temp / (243.04 + temp)))
@@ -83,134 +78,6 @@ defmodule Wx do
     end
   end
 
-  defp translate_condition(c) do
-    case c do
-      c when c in ["CLR", "SKC"] -> "clear"
-      "FEW" -> "partly cloudy"
-      "SCT" -> "cloudy"
-      "BKN" -> "mostly cloudy"
-      "OVC" -> "overcast"
-      "VV" -> "vertical visibility"
-      "" -> false
-    end
-  end
-
-  defp translate_quality(quality) do
-    case quality do
-      "+" -> "heavy"
-      "-" -> "light"
-      "VC" -> "vicinity"
-      "" -> nil
-    end
-  end
-
-  defp translate_other(other) do
-    case other do
-      "SQ" -> "squall"
-      "SS" -> "sandstorm"
-      "FC" -> "tornado"
-      "DS" -> "dust storm"
-      "PO" -> "sand whirls"
-      "" -> nil
-    end
-  end
-
-  defp translate_description(description) do
-    case description do
-      "MI" -> "shallow"
-      "BL" -> "blowing"
-      "BC" -> "patchy"
-      "SH" -> "showers"
-      "PR" -> "partial"
-      "DR" -> "drifting"
-      "TS" -> "thunderstorms"
-      "FZ" -> "freezing"
-      "" -> nil
-    end
-  end
-
-  defp translate_precipitation(precipitation) do
-    case precipitation do
-      "DZ" -> "drizzle"
-      "IC" -> "ice crystals"
-      "UP" -> "unknown"
-      "RA" -> "rain"
-      "PL" -> "ice pellets"
-      "SN" -> "snow"
-      "GR" -> "hail"
-      "SG" -> "snow grains"
-      "GS" -> "small hail"
-      "" -> nil
-    end
-  end
-
-  defp translate_obscurity(obscurity) do
-    case obscurity do
-      "BR" -> "mist"
-      "SA" -> "sand"
-      "FU" -> "smoke"
-      "FG" -> "fog"
-      "HZ" -> "haze"
-      "VA" -> "volcanic ash"
-      "PY" -> "spray"
-      "DU" -> "dust"
-      "" -> nil
-    end
-  end
-
-  defp translate_phenomena(quality, description, precipitation, obscurity, other) do
-    phenomena =
-      Enum.reject(
-        [
-          translate_quality(quality),
-          translate_description(description),
-          translate_precipitation(precipitation),
-          translate_obscurity(obscurity),
-          translate_other(other)
-        ],
-        &is_nil/1
-      )
-
-    if length(phenomena) > 0 do
-      Enum.join(phenomena, " ")
-    else
-      nil
-    end
-  end
-
-  def parse(metar_string) do
-    %{
-      "condition" => c,
-      "dewpoint" => dp,
-      "gusting" => g,
-      "quality" => qual,
-      "description" => desc,
-      "precipitation" => prec,
-      "obscurity" => obs,
-      "other" => oth,
-      "temperature" => t,
-      "visibility" => v,
-      "wind_speed" => ws,
-      "wind_direction" => wd
-    } =
-      Regex.named_captures(
-        ~r/(?<wind_direction>\d{3})(?<wind_speed>\d{2})(?:G(?<gusting>\d{2}))?KT\s(?<visibility>\d+)(?:SM)?(?:\s(?<quality>\+|-|VC)?(?<description>MI|BL|BC|SH|PR|DR|TS|FZ)?(?<precipitation>DZ|IC|UP|RA|PL|SN|GR|SG|GS)?(?<obscurity>BR|SA|FU|HZ|VA|PY|DU|FG)?(?<other>SQ|FC|SS|DS|PO)?)?\s(?<condition>CLR|SKC|FEW|SCT|BKN|OVC|VV)(?:\d{3})?(?:.*)?\s(?<temperature>M?(\d{2}))\/(?<dewpoint>M?(\d{2}))?/,
-        metar_string
-      )
-
-    %{
-      condition: translate_condition(c),
-      dewpoint_c: c_to_int(dp),
-      phenomena: translate_phenomena(qual, desc, prec, obs, oth),
-      relative_humidity: round(relative_humidity(c_to_int(t), c_to_int(dp))),
-      temperature_c: c_to_int(t),
-      visibility_mi: String.to_integer(v),
-      wind_bearing: String.to_integer(wd),
-      wind_gusting_kt: kt_to_int(g),
-      wind_speed_kt: kt_to_int(ws)
-    }
-  end
-
   def metar() do
     station = System.get_env("STATION", @default_station)
     Req.get!(@data_url <> station <> ".TXT").body
@@ -222,7 +89,7 @@ defmodule Wx do
   end
 
   def summarize(metar) do
-    result = Wx.parse(metar)
+    result = Metar.parse(metar)
     temp = round(Wx.convert_temperature(result.temperature_c, "f"))
     outside = result.phenomena || result.condition
 
@@ -230,7 +97,7 @@ defmodule Wx do
       Wx.feels_like(
         result.temperature_c,
         Wx.convert_wind_speed(result.wind_speed_kt, "kph"),
-        result.relative_humidity
+        Wx.relative_humidity(result.temperature_c, result.dewpoint_c)
       )
 
     if feelslike do
@@ -256,7 +123,6 @@ case System.argv() do
             condition: "overcast",
             dewpoint_c: -8,
             phenomena: nil,
-            relative_humidity: 68,
             temperature_c: -3,
             visibility_mi: 10,
             wind_bearing: 360,
@@ -265,6 +131,7 @@ case System.argv() do
           },
           %{
             heat_index_c: nil,
+            relative_humidity: 68,
             summary: "27°F (16°F) overcast",
             temperature_f: 27,
             temperature_k: 267,
@@ -279,7 +146,6 @@ case System.argv() do
             condition: "clear",
             dewpoint_c: -4,
             phenomena: nil,
-            relative_humidity: 86,
             temperature_c: -2,
             visibility_mi: 7,
             wind_bearing: 220,
@@ -288,6 +154,7 @@ case System.argv() do
           },
           %{
             heat_index_c: nil,
+            relative_humidity: 86,
             summary: "28°F (21°F) clear",
             temperature_f: 28,
             temperature_k: 268,
@@ -302,7 +169,6 @@ case System.argv() do
             condition: "mostly cloudy",
             dewpoint_c: 6,
             phenomena: nil,
-            relative_humidity: 81,
             temperature_c: 9,
             visibility_mi: 8,
             wind_bearing: 190,
@@ -311,6 +177,7 @@ case System.argv() do
           },
           %{
             heat_index_c: nil,
+            relative_humidity: 81,
             summary: "48°F (47°F) mostly cloudy",
             temperature_f: 48,
             temperature_k: 279,
@@ -325,7 +192,6 @@ case System.argv() do
             condition: "mostly cloudy",
             dewpoint_c: 12,
             phenomena: "mist",
-            relative_humidity: 100,
             temperature_c: 12,
             visibility_mi: 4,
             wind_bearing: 0,
@@ -334,6 +200,7 @@ case System.argv() do
           },
           %{
             heat_index_c: nil,
+            relative_humidity: 100,
             summary: "54°F mist",
             temperature_f: 54,
             temperature_k: 282,
@@ -348,7 +215,6 @@ case System.argv() do
             condition: "mostly cloudy",
             dewpoint_c: 7,
             phenomena: nil,
-            relative_humidity: 27,
             temperature_c: 28,
             visibility_mi: 10,
             wind_bearing: 210,
@@ -357,6 +223,7 @@ case System.argv() do
           },
           %{
             heat_index_c: 27,
+            relative_humidity: 27,
             summary: "82°F (81°F) mostly cloudy",
             temperature_f: 82,
             temperature_k: 298,
@@ -367,8 +234,13 @@ case System.argv() do
         }
       ]
 
-      test "METAR parsing" do
-        for {input, output} <- @cases, do: assert(output == Wx.parse(input))
+      test "calculate relative humidity" do
+        for {_input, output, conv} <- @cases,
+            do:
+              assert(
+                conv.relative_humidity ==
+                  round(Wx.relative_humidity(output.temperature_c, output.dewpoint_c))
+              )
       end
 
       test "convert wind speed to mph" do
@@ -416,7 +288,7 @@ case System.argv() do
             do:
               assert(
                 conv.heat_index_c ==
-                  round(Wx.calculate_heat_index(output.temperature_c, output.relative_humidity))
+                  round(Wx.calculate_heat_index(output.temperature_c, conv.relative_humidity))
               )
       end
 
